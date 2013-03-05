@@ -12,7 +12,7 @@ my @months=("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct"
 my @dows=("sun", "mon", "tue", "wed", "thu", "fri", "sat");
 my $which_cmd="/usr/bin/which";
 
-my $syntax="$0 [-n] [-u no|yes] [<cron_file>]\nWhere: -n = don't look for executables or user-names\n       -u no = crontab with no users (usual cron file)\n       -u yes = crontab with user-names (system cron file)";
+my $syntax="$0 [-n] [-u no|yes] [<cron_file>]\nWhere: -n = don't look for commands/executables or user-names\n       -u no = crontab with no users (usual cron file)\n       -u yes = crontab with user-names (system cron file)";
 local *FILE;
 
 my %opts=();
@@ -30,7 +30,7 @@ if (exists($opts{u})) {
   if (defined($opts{u}) && ($opts{u}=~/^(on|yes)$/i)) { $cron_with_users=1; }
   elsif (defined($opts{u}) && ($opts{u}=~/^(off|no)$/i)) { $cron_with_users=0; }
   else {
-    print STDERR $syntax."\n";
+    print STDERR "Option -u needs a valid argument (no/yes)\n$syntax\n";
     exit(1);
     }
   }
@@ -53,8 +53,12 @@ my @warnings=();
 my @errors=();
 while(!eof(FILE)) {
   my $line=<FILE>;
-  chomp($line);
   $line_no++;
+  if ($line!~/\n$/) {
+    push @errors, "No new-line found on line #$line_no: $line";
+    next;
+    }
+  chomp($line);
   my $org_line=$line;
   my $period="";
   my $user="";
@@ -120,7 +124,7 @@ while(!eof(FILE)) {
         my $t_rest=$3;
         if ($dont_check_exec_and_users || (getpwnam($t_user) && (!length(&check_cmd($t_cmd))))) {
           if ($maybe_cron_without_users) {
-            push @warnings, "Cannot determine if it's a system crontab (with user-names) or not ! Please add \"-u on/off\" paramter ! Line $line_no: $line";
+            push @warnings, "Cannot determine if it's a system crontab (with user-names) or not ! Please add \"-u on/off\" paramter ! Line #$line_no: $line";
             }
           $maybe_cron_with_users=1;
           }
@@ -130,7 +134,7 @@ while(!eof(FILE)) {
         my $t_rest=$2;
         if ((!length(&check_cmd($t_cmd)))) {
           if ($maybe_cron_with_users) {
-            push @warnings, "Cannot determine if it's a system crontab (with user-names) or not ! Please add \"-u on/off\" paramter ! Line $line_no: $line";
+            push @warnings, "Cannot determine if it's a system crontab (with user-names) or not ! Please add \"-u on/off\" paramter ! Line #$line_no: $line";
             }
           $maybe_cron_without_users=1;
           }
@@ -145,7 +149,7 @@ while(!eof(FILE)) {
           push @warnings, "No such user $user on line #$line_no: $line";
           }
         } else {
-        push @errors, "Invalid crontab line on $line_no: $line";
+        push @errors, "Invalid crontab line on #$line_no: $line";
         next;
         }
       }
@@ -154,12 +158,12 @@ while(!eof(FILE)) {
         $cmd=$1;
         $params=$2;
         } else {
-        push @errors, "Invalid crontab line on $line_no: $line";
+        push @errors, "Invalid crontab line on #$line_no: $line";
         next;
         }
       }
     else {
-      push @warnings, "Skip checking line $line_no: $line";
+      push @warnings, "Cannot determine if it's a system crontab (with user-names) or not ! Please add \"-u on/off\" paramter ! Skip checking line #$line_no: $line";
       next;
       }
     }
